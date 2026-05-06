@@ -1,0 +1,24 @@
+{
+  "name": "ak-dev",
+  "version": "0.1.0",
+  "description": "Reusable software development workflows and tool.",
+  "author": {
+    "name": "Alex Kolotov",
+    "email": "alexandr.kolotov@gmail.com",
+    "url": "https://github.com/akolotov"
+  },
+  "homepage": "https://github.com/akolotov/harness",
+  "repository": "https://github.com/akolotov/harness",
+  "license": "MIT",
+  "keywords": [],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Kolotov's dev",
+    "shortDescription": "Software development workflow.",
+    "longDescription": "Bundle reusable software development skills and workflows for working with codebases.",
+    "developerName": "Alex Kolotov",
+    "category": "Productivity",
+    "websiteURL": "https://github.com/akolotov/harness",
+    "brandColor": "#10A37F"
+  }
+}
