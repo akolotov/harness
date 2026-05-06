@@ -1,0 +1,20 @@
+{
+  "name": "ak-harness",
+  "interface": {
+    "displayName": "Kolotov's Harness"
+  },
+  "plugins": [
+    {
+      "name": "ak-dev",
+      "source": {
+        "source": "local",
+        "path": "./dev"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development"
+    }
+  ]
+}
