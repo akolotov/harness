@@ -1,0 +1,14 @@
+{
+  "name": "ak-dev",
+  "version": "0.1.0",
+  "author": {
+    "name": "Alex Kolotov",
+    "email": "alexandr.kolotov@gmail.com",
+    "url": "https://github.com/akolotov"
+  },
+  "homepage": "https://github.com/akolotov/harness",
+  "repository": "https://github.com/akolotov/harness",
+  "license": "MIT",
+  "keywords": [],
+  "skills": "./skills/"
+}
