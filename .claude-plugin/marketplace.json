@@ -1,0 +1,15 @@
+{
+  "name": "ak-harness",
+  "version": "0.1.0",
+  "owner": {
+    "name": "Alex Kolotov",
+    "email": "alexandr.kolotov@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "ak-dev",
+      "source": "./dev",
+      "category": "development"
+    }
+  ]
+}
