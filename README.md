@@ -14,7 +14,9 @@ harness/
 │   ├── .claude-plugin/
 │   │   └── plugin.json           # Plugin manifest
 │   └── skills/
-│       └── research-codebase/    # Skill
+│       ├── research-codebase/    # Skill
+│       │   └── SKILL.md
+│       └── implementation-plan-review/
 │           └── SKILL.md
 └── README.md
 ```
@@ -44,15 +46,16 @@ dev/
 ├── .claude-plugin/plugin.json
 └── skills/
     ├── research-codebase/SKILL.md
-    ├── refactor-helper/SKILL.md   # future
+    ├── implementation-plan-review/SKILL.md
     └── test-writer/SKILL.md       # future
 ```
 
 ## Currently published
 
-| Plugin   | Skills              | Description                          |
-| :------- | :------------------ | :----------------------------------- |
-| `ak-dev` | `research-codebase` | Development-focused skills for Claude Code |
+| Plugin   | Skills                       | Description                                                                 |
+| :------- | :--------------------------- | :-------------------------------------------------------------------------- |
+| `ak-dev` | `research-codebase`          | Evidence-backed codebase research written to a reusable research note        |
+| `ak-dev` | `implementation-plan-review` | Expert review of an implementation plan against an issue and the codebase    |
 
 ## Install a plugin from this marketplace
 
