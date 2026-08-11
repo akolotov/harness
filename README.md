@@ -14,9 +14,12 @@ harness/
 │   ├── .claude-plugin/
 │   │   └── plugin.json           # Plugin manifest
 │   └── skills/
+│       ├── _lib/                 # Shared helpers used by skill scripts
 │       ├── research-codebase/    # Skill
 │       │   └── SKILL.md
-│       └── implementation-plan-review/
+│       ├── implementation-plan-review/
+│       │   └── SKILL.md
+│       └── review-plan-findings-feedback/
 │           └── SKILL.md
 └── README.md
 ```
@@ -47,15 +50,23 @@ dev/
 └── skills/
     ├── research-codebase/SKILL.md
     ├── implementation-plan-review/SKILL.md
+    ├── review-plan-findings-feedback/SKILL.md
     └── test-writer/SKILL.md       # future
 ```
 
+A skill may depend on a sibling skill in the same plugin: `review-plan-findings-feedback`
+reuses the protocol, report template, and scripts of `implementation-plan-review` through
+relative paths such as `../implementation-plan-review/scripts/new_scratchpads_dir.sh`.
+Directories under `skills/` that contain no `SKILL.md` (such as `_lib/`) are not skills;
+they ship with the plugin and hold code shared between skills.
+
 ## Currently published
 
-| Plugin   | Skills                       | Description                                                                 |
-| :------- | :--------------------------- | :-------------------------------------------------------------------------- |
-| `ak-dev` | `research-codebase`          | Evidence-backed codebase research written to a reusable research note        |
-| `ak-dev` | `implementation-plan-review` | Expert review of an implementation plan against an issue and the codebase    |
+| Plugin   | Skills                           | Description                                                                      |
+| :------- | :------------------------------- | :------------------------------------------------------------------------------- |
+| `ak-dev` | `research-codebase`              | Evidence-backed codebase research written to a reusable research note             |
+| `ak-dev` | `implementation-plan-review`     | Expert review of an implementation plan against an issue and the codebase         |
+| `ak-dev` | `review-plan-findings-feedback`  | Re-review after plan-review findings were addressed; adjudicates only new problems |
 
 ## Install a plugin from this marketplace
 
