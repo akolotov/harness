@@ -13,6 +13,9 @@ Review an implementation plan for coverage, correctness, and fit with the curren
 - Implementation plan: a local file path.
 - Issue/requirements: either (a) a local file path, or (b) a GitHub issue number (run from the target repo so `gh` resolves it).
 
+Every relative path in this skill — scripts, references, and assets — resolves from the directory that holds this
+`SKILL.md`, not from the current working directory. Resolve each one against that directory before running or reading it.
+
 If the user provides a GitHub issue number, prefer fetching it into a local file using the bundled script:
 
 ```bash
