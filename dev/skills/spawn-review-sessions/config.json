@@ -1,0 +1,17 @@
+{
+  "claude_path": "",
+  "tmux_path": "",
+  "model": "opus",
+  "effort": "xhigh",
+  "permission_mode": "auto",
+  "seed_concurrency": 4,
+  "seed_max_budget_usd": 0,
+  "seed_timeout_seconds": 900,
+  "progress_interval_seconds": 15,
+  "verdict_language": "English",
+  "project_context": "",
+  "templates": {
+    "code_review": "templates/code-review.md",
+    "plan_review": "templates/plan-review.md"
+  }
+}

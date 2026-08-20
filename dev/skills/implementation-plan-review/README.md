@@ -1,14 +1,15 @@
 # implementation-plan-review
 
-Expert review of an implementation plan against an issue/enhancement description
-(local file or GitHub issue number) and the current repository codebase. Produces a
-structured review with actionable comments; it never implements the plan.
+This skill reviews an implementation plan against an issue or enhancement description (a
+local file or a GitHub issue number) and the current codebase. It produces a structured
+review with actionable comments. It never implements the plan.
 
-Every suspected problem is treated as a *candidate* and adjudicated by an independent
-subagent under a fixed protocol, so findings are confirmed, downgraded, or closed on
-evidence before they reach the final review.
+The skill treats every suspected problem as a candidate. An independent subagent judges
+each candidate under a fixed protocol. Because of this, a finding is confirmed,
+downgraded, or closed on evidence, before it reaches the final review.
 
 ## Notes
 
-The skill is project-agnostic: it discovers repo conventions (agent-facing rule files,
-spec docs, test layout) at review time instead of assuming a particular project layout.
+The skill works with any project. It finds the project conventions, such as agent-facing
+rule files, spec documents, and the test layout, at review time. It does not assume a
+fixed project layout.
