@@ -48,6 +48,11 @@ python3 <SKILL_DIR>/scripts/spawn_review_sessions.py \
   `sessions/` dir next to the MD file. The slug→UUID mapping makes reruns
   idempotent: live tmux sessions are skipped, previously-seeded slugs resume
   without re-seeding.
+- Each seed prompt also tells the session where its own decision report belongs later:
+  `decisions/<slug>.md`, next to `sessions/` (both under the MD file's directory, so a
+  decision report inherits the same run's timestamp instead of a separately-invented
+  one). The prompt says not to write it yet — that happens on a separate, later request
+  within the same session, once a decision has actually been reached.
 - Phase 1 seeds run with `--output-format stream-json`, so
   `seed-<slug>.jsonl` fills with events as the model works. The terminal
   `result` event carries the success/error verdict.
@@ -91,9 +96,11 @@ Two config fields exist purely so the prompt need not be forked:
 ## Prompt templates
 
 `templates/code-review.md` and `templates/plan-review.md` are the seed prompts. They are
-written in English and carry four placeholders: `<comment-statement>` (the comment body),
-`<implementation-plan-file-path>` (plan review only), `<verdict-language>` and
-`<project-context>`.
+written in English and carry these placeholders: `<comment-statement>` (the comment
+body), `<implementation-plan-file-path>` (plan review only), `<verdict-language>`,
+`<project-context>`, `<slug>` (this comment's slug), `<review-comments-file-path>` (the
+saved-comments MD file this slug came from), and `<decision-file-path>` (where the
+eventual decision report belongs — see the `decisions/<slug>.md` bullet under Usage).
 
 Beyond the verdict itself, the shipped prompts ask for an explanation aimed at a reader
 who does not know the codebase or its language, and constrain it two ways at once: leave

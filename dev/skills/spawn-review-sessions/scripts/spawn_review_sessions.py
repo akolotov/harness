@@ -62,6 +62,13 @@ PLACEHOLDER_COMMENT = "<comment-statement>"
 PLACEHOLDER_PLAN_PATH = "<implementation-plan-file-path>"
 PLACEHOLDER_VERDICT_LANG = "<verdict-language>"
 PLACEHOLDER_PROJECT_CONTEXT = "<project-context>"
+PLACEHOLDER_SLUG = "<slug>"
+PLACEHOLDER_COMMENTS_FILE_PATH = "<review-comments-file-path>"
+PLACEHOLDER_DECISION_PATH = "<decision-file-path>"
+
+# Decision reports (written later, on request, by the seeded session itself)
+# live next to 'sessions/', under the same timestamped comments dir.
+DECISIONS_SUBDIR = "decisions"
 
 # Language of the explanation the seeded session writes back, when the config
 # leaves it unset. Free-form string, not an enum: "Russian, but keep identifiers
@@ -278,8 +285,12 @@ PROJECT_CONTEXT_LINE_RE = re.compile(
 
 def build_prompt(template: str, review_type: str, body: str, meta: dict[str, str],
                  verdict_language: str = DEFAULT_VERDICT_LANGUAGE,
-                 project_context: str = "") -> str:
+                 project_context: str = "", slug: str = "",
+                 comments_file_path: str = "", decision_file_path: str = "") -> str:
     prompt = template.replace(PLACEHOLDER_COMMENT, body)
+    prompt = prompt.replace(PLACEHOLDER_SLUG, slug)
+    prompt = prompt.replace(PLACEHOLDER_COMMENTS_FILE_PATH, comments_file_path)
+    prompt = prompt.replace(PLACEHOLDER_DECISION_PATH, decision_file_path)
     if review_type == "plan-review":
         plan_path = meta.get(META_PLAN_PATH, "").strip()
         if not plan_path:
@@ -585,8 +596,11 @@ def main() -> int:
         if tmux_alive(cfg["_tmux_path"], tmux_name):
             skipped_alive.append(slug)
             continue
+        decision_path = md_file.parent / DECISIONS_SUBDIR / f"{slug}.md"
         prompt = build_prompt(template, review_type, body, meta,
-                              verdict_language, project_context)
+                              verdict_language, project_context, slug=slug,
+                              comments_file_path=str(md_file),
+                              decision_file_path=str(decision_path))
         existing = mapping.get(slug)
         if existing and existing.get("uuid"):
             to_resume.append({"slug": slug, "uuid": existing["uuid"],

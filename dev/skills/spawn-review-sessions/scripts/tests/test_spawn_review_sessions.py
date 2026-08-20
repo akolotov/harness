@@ -271,6 +271,20 @@ class TestBuildPrompt(unittest.TestCase):
         # the placeholder's line is gone and leaves no triple newline behind
         self.assertEqual(p, "a\n\nb\nBODY")
 
+    def test_slug_comments_file_and_decision_path_substituted(self):
+        tpl = ("<comment-statement>\nslug: <slug>\nsource: <review-comments-file-path>\n"
+              "decision: <decision-file-path>")
+        p = srs.build_prompt(tpl, "code-review", "BODY", {},
+                             slug="my-slug",
+                             comments_file_path="/x/comments.md",
+                             decision_file_path="/x/decisions/my-slug.md")
+        self.assertIn("slug: my-slug", p)
+        self.assertIn("source: /x/comments.md", p)
+        self.assertIn("decision: /x/decisions/my-slug.md", p)
+        self.assertNotIn(srs.PLACEHOLDER_SLUG, p)
+        self.assertNotIn(srs.PLACEHOLDER_COMMENTS_FILE_PATH, p)
+        self.assertNotIn(srs.PLACEHOLDER_DECISION_PATH, p)
+
 
 class TestConfigResolution(unittest.TestCase):
     """Binary lookup and the per-project config/template override cascade."""
@@ -579,6 +593,20 @@ class TestMainEndToEnd(unittest.TestCase):
         self.assertEqual(mapping["post-load-name-form"]["tmux_session"],
                          "review-plan-CIR-post-load-name-form")
 
+    def test_decision_and_comments_path_wired_into_prompt(self):
+        # The seed prompt must carry this run's own MD path and a decision path
+        # derived from it (decisions/<slug>.md next to sessions/, both under the
+        # MD's own directory), rather than a separately-invented path/timestamp.
+        calls = []
+        rc, _ = self._run_main(PLAN_MD, calls)
+        self.assertEqual(rc, 0)
+        prompt = next(c for c in calls if "-p" in c)[-1]
+        self.assertNotIn(srs.PLACEHOLDER_SLUG, prompt)
+        self.assertNotIn(srs.PLACEHOLDER_COMMENTS_FILE_PATH, prompt)
+        self.assertNotIn(srs.PLACEHOLDER_DECISION_PATH, prompt)
+        self.assertIn("comments.md", prompt)
+        self.assertIn("decisions/post-load-name-form.md", prompt)
+
     def test_seed_failure_excluded_from_mapping(self):
         calls = []
         rc, mapping = self._run_main(
@@ -641,7 +669,9 @@ class TestShippedTemplates(unittest.TestCase):
                             ("plan-review.md", (srs.PLACEHOLDER_PLAN_PATH,))):
             tpl = (srs.SKILL_DIR / "templates" / name).read_text(encoding="utf-8")
             for ph in (srs.PLACEHOLDER_COMMENT, srs.PLACEHOLDER_VERDICT_LANG,
-                       srs.PLACEHOLDER_PROJECT_CONTEXT, *extra):
+                       srs.PLACEHOLDER_PROJECT_CONTEXT, srs.PLACEHOLDER_SLUG,
+                       srs.PLACEHOLDER_COMMENTS_FILE_PATH,
+                       srs.PLACEHOLDER_DECISION_PATH, *extra):
                 self.assertIn(ph, tpl, f"{name} is missing {ph}")
 
     def test_shipped_config_defaults(self):
