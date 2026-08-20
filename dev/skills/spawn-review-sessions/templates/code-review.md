@@ -27,4 +27,13 @@ end. State the verdict, then why it holds, then what it breaks in practice.
 
 <project-context>
 
+This comment was saved as one of several findings in <review-comments-file-path>,
+under slug `<slug>`. You do not need to open that file now — the comment above already
+has everything relevant to this session. Cite the file path and slug later, if useful,
+in the decision report.
+
+Later in this session, you will be asked to write a decision report recording what was
+ultimately decided about this comment and why. It belongs at <decision-file-path>. Do
+not create or write that file now.
+
 Do not modify any files yet.
