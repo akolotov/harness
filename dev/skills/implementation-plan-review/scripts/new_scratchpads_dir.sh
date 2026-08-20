@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-Blockscout
-#
 # Create a fresh timestamped scratchpad directory for implementation-plan-review.
 #
 # For a plan file at <dir>/<stem>.<ext>, creates and prints:

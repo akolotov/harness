@@ -19,7 +19,11 @@ harness/
 │       │   └── SKILL.md
 │       ├── implementation-plan-review/
 │       │   └── SKILL.md
-│       └── review-plan-findings-feedback/
+│       ├── review-plan-findings-feedback/
+│       │   └── SKILL.md
+│       ├── save-review-comments/
+│       │   └── SKILL.md
+│       └── spawn-review-sessions/
 │           └── SKILL.md
 └── README.md
 ```
@@ -51,12 +55,15 @@ dev/
     ├── research-codebase/SKILL.md
     ├── implementation-plan-review/SKILL.md
     ├── review-plan-findings-feedback/SKILL.md
+    ├── save-review-comments/SKILL.md
+    ├── spawn-review-sessions/SKILL.md
     └── test-writer/SKILL.md       # future
 ```
 
 A skill may depend on a sibling skill in the same plugin: `review-plan-findings-feedback`
 reuses the protocol, report template, and scripts of `implementation-plan-review` through
-relative paths such as `../implementation-plan-review/scripts/new_scratchpads_dir.sh`.
+relative paths such as `../implementation-plan-review/scripts/new_scratchpads_dir.sh`, and
+`spawn-review-sessions` consumes the comments file that `save-review-comments` writes.
 Directories under `skills/` that contain no `SKILL.md` (such as `_lib/`) are not skills;
 they ship with the plugin and hold code shared between skills.
 
@@ -67,6 +74,8 @@ they ship with the plugin and hold code shared between skills.
 | `ak-dev` | `research-codebase`              | Evidence-backed codebase research written to a reusable research note             |
 | `ak-dev` | `implementation-plan-review`     | Expert review of an implementation plan against an issue and the codebase         |
 | `ak-dev` | `review-plan-findings-feedback`  | Re-review after plan-review findings were addressed; adjudicates only new problems |
+| `ak-dev` | `save-review-comments`           | Persists the surviving actionable comments of a review as tagged Markdown blocks   |
+| `ak-dev` | `spawn-review-sessions`          | Spawns one backgrounded Claude Code Remote Control session per saved review comment |
 
 ## Install a plugin from this marketplace
 

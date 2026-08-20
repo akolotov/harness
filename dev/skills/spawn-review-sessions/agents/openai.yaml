@@ -1,0 +1,6 @@
+interface:
+  display_name: "Spawn Review Sessions"
+  short_description: "One RC session per review comment"
+  default_prompt: "Use $spawn-review-sessions to spawn one Claude Code Remote Control session per comment in a saved review comments file."
+policy:
+  allow_implicit_invocation: false
