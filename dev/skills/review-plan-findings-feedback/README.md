@@ -1,17 +1,17 @@
 # review-plan-findings-feedback
 
-Follow-up step for `implementation-plan-review`. Reviews the feedback file written
-after plan-review findings were addressed, and checks whether each original finding
-is genuinely closed, acceptably rejected, or still open — plus whether the plan edits
-introduced or exposed anything new.
+This skill is a follow-up step for `implementation-plan-review`. It reviews the feedback
+file that you write after you address the findings of a plan review. It checks whether
+each original finding is genuinely closed, acceptably rejected, or still open. It also
+checks whether the plan edits introduced or exposed a new problem.
 
-Only *new* candidate problems are adjudicated again, by independent subagents under
-the `implementation-plan-review` protocol. Surviving findings are written to
-`.ai/impl_plans/<plan-id>/findings/<timestamp>/findings.md`; the chat reply is just the
-path, or a short no-new-findings status.
+The skill adjudicates only new candidate problems again. Independent subagents adjudicate
+them under the `implementation-plan-review` protocol. The skill writes surviving findings
+to `.ai/impl_plans/<plan-id>/findings/<timestamp>/findings.md`. The chat reply gives only
+the file path, or a short status that reports no new findings.
 
 ## Notes
 
-The skill is project-agnostic and reuses the sibling `implementation-plan-review`
-skill's protocol, report template, and scripts through relative paths inside the same
-plugin.
+The skill works with any project. It reuses the protocol, the report template, and the
+scripts of the sibling `implementation-plan-review` skill, through relative paths inside
+the same plugin.

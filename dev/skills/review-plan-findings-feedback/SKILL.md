@@ -1,6 +1,6 @@
 ---
 name: review-plan-findings-feedback
-description: Manually review a feedback file produced after implementation-plan review findings were addressed. Use when the user asks to verify that plan changes correctly close, correctly reject, or fail to close the original findings, while checking for newly introduced or newly exposed problems. Independently adjudicates only new candidate problems with the implementation-plan-review protocol, writes surviving unresolved or new findings to the plan-id findings directory, and replies with the output path or a concise no-new-findings status.
+description: Review the feedback that closes or rejects findings from an earlier implementation-plan review. Use this skill to check that plan changes fixed the original problems, and to catch new problems they introduced.
 disable-model-invocation: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: save-review-comments
-description: Persist the surviving actionable comments or findings of a review session into a machine-readable Markdown file. Use when explicitly invoked after an implementation-plan review or a code review to save its comments/questions as tagged blocks under <plan-dir>/<plan-id>/comments/<timestamp>/ or .ai/pr-review/<pr-id>/comments/<timestamp>/.
+description: Save the actionable comments from an implementation-plan review or a code review into a markdown file. Use this skill after a review, so you can hand off or track the comments later.
 disable-model-invocation: true
 ---
 

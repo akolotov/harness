@@ -1,6 +1,6 @@
 ---
 name: implementation-plan-review
-description: Expert review of an implementation plan against a GitHub issue/enhancement description (provided as a local file or a GitHub issue URL) and the current repository codebase. Use when asked to critique a plan for correctness, completeness, codebase alignment, risks, and test/rollout readiness (do not implement).
+description: Review an implementation plan against its GitHub issue and the codebase. Use this skill to find gaps in correctness, completeness, risk coverage, and test readiness before you implement the plan.
 disable-model-invocation: true
 ---
 

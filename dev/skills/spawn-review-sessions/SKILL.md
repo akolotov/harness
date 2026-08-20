@@ -1,6 +1,6 @@
 ---
 name: spawn-review-sessions
-description: Spawn one backgrounded Claude Code Remote Control session per review comment in a comments MD file produced by save-review-comments (code-review or implementation-plan review).
+description: Start one background Claude Code session for each comment in a saved review-comments file. Use this skill after save-review-comments, to work through review comments in parallel.
 disable-model-invocation: true
 ---
 
