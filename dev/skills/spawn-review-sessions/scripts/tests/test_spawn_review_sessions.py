@@ -420,6 +420,110 @@ class TestMapping(unittest.TestCase):
 # --------------------------------------------------------------------------- #
 # Orchestration (mocked subprocess)
 # --------------------------------------------------------------------------- #
+class TestFindPrWorktree(unittest.TestCase):
+    """`gh pr view` + `git worktree list --porcelain`, both mocked."""
+
+    def _fake_run(self, *, head_ref="feature-x", head_rc=0,
+                  worktree_listing="", listing_rc=0):
+        def fake_run(cmd, **kw):
+            if cmd[:2] == ["gh", "pr"]:
+                return FakeProc(returncode=head_rc, stdout=head_ref)
+            if "worktree" in cmd and "list" in cmd:
+                return FakeProc(returncode=listing_rc, stdout=worktree_listing)
+            raise AssertionError(f"unexpected command: {cmd}")
+        return fake_run
+
+    def test_no_pr_id_short_circuits(self):
+        with mock.patch.object(srs.subprocess, "run") as run:
+            self.assertIsNone(srs.find_pr_worktree("", "/repo"))
+        run.assert_not_called()
+
+    def test_gh_missing_short_circuits(self):
+        with mock.patch.object(srs.shutil, "which", return_value=None), \
+                mock.patch.object(srs.subprocess, "run") as run:
+            self.assertIsNone(srs.find_pr_worktree("1695", "/repo"))
+        run.assert_not_called()
+
+    def test_gh_failure_returns_none(self):
+        with mock.patch.object(srs.shutil, "which", return_value="/usr/bin/gh"), \
+                mock.patch.object(srs.subprocess, "run", self._fake_run(head_rc=1)):
+            self.assertIsNone(srs.find_pr_worktree("1695", "/repo"))
+
+    def test_worktree_list_failure_returns_none(self):
+        with mock.patch.object(srs.shutil, "which", return_value="/usr/bin/gh"), \
+                mock.patch.object(srs.subprocess, "run",
+                                  self._fake_run(listing_rc=1)):
+            self.assertIsNone(srs.find_pr_worktree("1695", "/repo"))
+
+    def test_match_under_managed_worktrees_returns_branch_not_dirname(self):
+        # The worktree's directory is named "pr-1695", unrelated to the
+        # branch "feature-x" -- the returned name must be the branch, since
+        # that's what's passed to --worktree, not whatever the directory
+        # happens to be called.
+        listing = ("worktree /repo\nHEAD aaa\nbranch refs/heads/main\n\n"
+                   "worktree /repo/.claude/worktrees/pr-1695\n"
+                   "HEAD bbb\nbranch refs/heads/feature-x\n")
+        with mock.patch.object(srs.shutil, "which", return_value="/usr/bin/gh"), \
+                mock.patch.object(srs.subprocess, "run",
+                                  self._fake_run(worktree_listing=listing)):
+            self.assertEqual(srs.find_pr_worktree("1695", "/repo"), "feature-x")
+
+    def test_branch_not_checked_out_anywhere(self):
+        listing = "worktree /repo\nHEAD aaa\nbranch refs/heads/main\n"
+        with mock.patch.object(srs.shutil, "which", return_value="/usr/bin/gh"), \
+                mock.patch.object(srs.subprocess, "run",
+                                  self._fake_run(worktree_listing=listing)):
+            self.assertIsNone(srs.find_pr_worktree("1695", "/repo"))
+
+    def test_match_outside_managed_dir_accepted(self):
+        # Same branch, checked out as a sibling worktree rather than under
+        # .claude/worktrees/ -- trusted and used anyway.
+        listing = ("worktree /elsewhere/some-dir-name\n"
+                   "HEAD bbb\nbranch refs/heads/feature-x\n")
+        with mock.patch.object(srs.shutil, "which", return_value="/usr/bin/gh"), \
+                mock.patch.object(srs.subprocess, "run",
+                                  self._fake_run(worktree_listing=listing)):
+            self.assertEqual(srs.find_pr_worktree("1695", "/repo"), "feature-x")
+
+    def test_slashed_branch_name_not_truncated_to_last_path_segment(self):
+        # Regression: a hook-routed (or hand-created) worktree whose directory
+        # mirrors a '/'-separated branch name, e.g.
+        # ~/projects/.worktrees/bs-elixir/fix/arbitrum-inverted-confirmations-
+        # order for branch "fix/arbitrum-inverted-confirmations-order". Taking
+        # only the last path segment ("arbitrum-inverted-confirmations-order")
+        # would point --worktree at an unrelated, freshly-created location.
+        branch = "fix/arbitrum-inverted-confirmations-order"
+        listing = (f"worktree /home/x/projects/.worktrees/bs-elixir/{branch}\n"
+                  f"HEAD bbb\nbranch refs/heads/{branch}\n")
+        with mock.patch.object(srs.shutil, "which", return_value="/usr/bin/gh"), \
+                mock.patch.object(srs.subprocess, "run",
+                                  self._fake_run(head_ref=branch,
+                                                 worktree_listing=listing)):
+            self.assertEqual(srs.find_pr_worktree("14741", "/repo"), branch)
+
+    def test_match_is_current_worktree_returns_none(self):
+        # The PR's branch is already checked out in repo_dir itself -- no
+        # redirect needed, even though the branch technically "matches".
+        listing = "worktree /repo\nHEAD bbb\nbranch refs/heads/feature-x\n"
+        with mock.patch.object(srs.shutil, "which", return_value="/usr/bin/gh"), \
+                mock.patch.object(srs.subprocess, "run",
+                                  self._fake_run(worktree_listing=listing)):
+            self.assertIsNone(srs.find_pr_worktree("1695", "/repo"))
+
+    def test_repo_dir_compared_by_real_path_not_raw_string(self):
+        # main() passes repo_dir as the current worktree's root already
+        # resolved via git (git_root -> `git rev-parse --show-toplevel`, which
+        # returns the linked worktree's own root even when invoked from one of
+        # its subdirectories) -- this just needs to compare real paths, not
+        # raw strings, so a trailing slash or similar doesn't cause a false
+        # "different worktree" positive.
+        listing = "worktree /repo\nHEAD bbb\nbranch refs/heads/feature-x\n"
+        with mock.patch.object(srs.shutil, "which", return_value="/usr/bin/gh"), \
+                mock.patch.object(srs.subprocess, "run",
+                                  self._fake_run(worktree_listing=listing)):
+            self.assertIsNone(srs.find_pr_worktree("1695", "/repo/"))
+
+
 class TestSeedOne(unittest.TestCase):
     def _cfg(self):
         return {"_claude_path": "/fake/claude", "permission_mode": "plan",
@@ -430,7 +534,7 @@ class TestSeedOne(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d, \
                 mock.patch.object(srs.subprocess, "run", make_fake_run(calls)):
             res = srs.seed_one(self._cfg(), Path(d), "slug", "uuid-1",
-                               "review-slug", "prompt", 600, 0, dry_run=False)
+                               "review-slug", "prompt", 600, 0, None, dry_run=False)
             # stream artifact is JSONL, named after the slug
             self.assertTrue((Path(d) / "seed-slug.jsonl").exists())
         self.assertTrue(res["ok"])
@@ -442,6 +546,16 @@ class TestSeedOne(unittest.TestCase):
         self.assertIn("--verbose", seed_cmd)                  # required for stream-json
         self.assertEqual(seed_cmd[seed_cmd.index("--output-format") + 1], "stream-json")
         self.assertNotIn("--max-budget-usd", seed_cmd)        # budget 0 -> omitted
+        self.assertNotIn("--worktree", seed_cmd)               # no name -> omitted
+
+    def test_seed_worktree_flag(self):
+        calls = []
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(srs.subprocess, "run", make_fake_run(calls)):
+            srs.seed_one(self._cfg(), Path(d), "slug", "uuid-1", "review-slug",
+                        "prompt", 600, 0, "pr-1695", dry_run=False)
+        seed_cmd = next(c for c in calls if "-p" in c)
+        self.assertEqual(seed_cmd[seed_cmd.index("--worktree") + 1], "pr-1695")
 
     def test_seed_no_result_event(self):
         calls = []
@@ -449,7 +563,7 @@ class TestSeedOne(unittest.TestCase):
                 mock.patch.object(srs.subprocess, "run",
                                   make_fake_run(calls, no_result_names={"review-slug"})):
             res = srs.seed_one(self._cfg(), Path(d), "slug", "u", "review-slug",
-                               "p", 600, 0, dry_run=False)
+                               "p", 600, 0, None, dry_run=False)
         self.assertFalse(res["ok"])
         self.assertIn("no result event", res["reason"])
 
@@ -457,7 +571,7 @@ class TestSeedOne(unittest.TestCase):
         calls = []
         with tempfile.TemporaryDirectory() as d, \
                 mock.patch.object(srs.subprocess, "run", make_fake_run(calls)):
-            srs.seed_one(self._cfg(), Path(d), "s", "u", "n", "p", 600, 2.5,
+            srs.seed_one(self._cfg(), Path(d), "s", "u", "n", "p", 600, 2.5, None,
                          dry_run=False)
         seed_cmd = next(c for c in calls if "-p" in c)
         self.assertIn("--max-budget-usd", seed_cmd)
@@ -469,7 +583,7 @@ class TestSeedOne(unittest.TestCase):
                 mock.patch.object(srs.subprocess, "run",
                                   make_fake_run(calls, fail_seed_names={"review-slug"})):
             res = srs.seed_one(self._cfg(), Path(d), "slug", "u", "review-slug",
-                               "p", 600, 0, dry_run=False)
+                               "p", 600, 0, None, dry_run=False)
         self.assertFalse(res["ok"])
         self.assertIn("subtype", res["reason"])
 
@@ -479,7 +593,7 @@ class TestSeedOne(unittest.TestCase):
                 mock.patch.object(srs.subprocess, "run",
                                   make_fake_run(calls, timeout_names={"review-slug"})):
             res = srs.seed_one(self._cfg(), Path(d), "slug", "u", "review-slug",
-                               "p", 600, 0, dry_run=False)
+                               "p", 600, 0, None, dry_run=False)
         self.assertFalse(res["ok"])
         self.assertIn("timeout", res["reason"])
 
@@ -488,7 +602,7 @@ class TestSeedOne(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d, \
                 mock.patch.object(srs.subprocess, "run", make_fake_run(calls)):
             res = srs.seed_one(self._cfg(), Path(d), "s", "u", "n", "p", 600, 0,
-                               dry_run=True)
+                               None, dry_run=True)
         self.assertTrue(res["ok"])
         self.assertEqual(calls, [])
 
@@ -624,6 +738,40 @@ class TestMainEndToEnd(unittest.TestCase):
         seeded_names = [c[c.index("--name") + 1] for c in calls if "-p" in c]
         self.assertNotIn("PR#1695 - first-thing", seeded_names)
         self.assertIn("PR#1695 - second.thing", seeded_names)  # display name = raw slug
+
+    def test_explicit_project_dir_skips_worktree_autodetect(self):
+        # --project-dir is the operator overriding where sessions start; it
+        # must not be second-guessed by a PR-branch worktree lookup.
+        calls = []
+        with mock.patch.object(srs, "find_pr_worktree") as fpw:
+            rc, _ = self._run_main(CODE_MD, calls)
+        self.assertEqual(rc, 0)
+        fpw.assert_not_called()
+        self.assertFalse(any("--worktree" in c for c in calls if "-p" in c))
+
+    def test_worktree_autodetected_without_project_dir(self):
+        calls = []
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            md = tmp / "comments.md"
+            md.write_text(CODE_MD, encoding="utf-8")
+            cfg = write_temp_config(tmp)
+            argv = ["prog", str(md), "--config", str(cfg)]  # no --project-dir
+            with mock.patch.object(sys, "argv", argv), \
+                    mock.patch.object(srs.subprocess, "run", make_fake_run(calls)), \
+                    mock.patch.object(srs, "git_root", return_value=tmp), \
+                    mock.patch.object(srs, "find_pr_worktree",
+                                      return_value="pr-1695") as fpw:
+                rc = srs.main()
+        self.assertEqual(rc, 0)
+        fpw.assert_called_once()
+        pr_id, repo_dir = fpw.call_args.args
+        self.assertEqual(pr_id, "1695")
+        self.assertEqual(repo_dir, str(tmp.resolve()))
+        seed_cmds = [c for c in calls if "-p" in c]
+        self.assertTrue(seed_cmds)
+        for c in seed_cmds:
+            self.assertEqual(c[c.index("--worktree") + 1], "pr-1695")
 
     def test_dry_run_writes_no_mapping_and_no_side_effects(self):
         calls = []

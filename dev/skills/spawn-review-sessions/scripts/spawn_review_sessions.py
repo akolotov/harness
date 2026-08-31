@@ -6,7 +6,7 @@ doc for rationale):
 
   Step 1 (seed, headless, parallel):
       claude -p --verbose --output-format stream-json --session-id <uuid> \
-          --name review-<slug> --permission-mode <config> ...
+          --name review-<slug> --permission-mode <config> [--worktree <name>] ...
       Creates a persisted session under a self-minted UUID and feeds it the
       composite prompt. The permission mode comes from the config
       ('permission_mode', falling back to 'plan' when unset); the shipped
@@ -14,6 +14,25 @@ doc for rationale):
       still leaves the decision to the operator. The event stream is written to
       seed-<slug>.jsonl (tail -f for live status); the terminal 'result' event
       is the success/error verdict.
+
+      For code-review, --worktree is added automatically when `git worktree
+      list` already has a worktree checked out on the PR's branch, anywhere on
+      disk (see find_pr_worktree): the seed's subprocess inherits this
+      script's own cwd, which is not necessarily that worktree, so without
+      this the seeded session could silently review whatever branch happens to
+      be checked out wherever this script runs. Skipped when --project-dir is
+      passed explicitly, gh is unavailable, no matching worktree is found, or
+      the match already IS the current worktree — in all those cases the
+      session falls back to today's behavior (whatever branch this script's
+      own process is standing in). The worktree's location is trusted as-is
+      (operators are expected to control what worktrees exist on their own
+      machine); the name passed to --worktree is the PR's branch name itself
+      (not anything derived from the matched directory's path — a directory's
+      last path component alone would truncate a '/'-separated name), which
+      round-trips correctly when the worktree was named after its branch —
+      true for both a human doing that by hand and for a WorktreeCreate hook
+      that mirrors the branch path, but not guaranteed for one named some
+      other way.
 
   Step 2 (steer, RC in tmux):
       tmux new-session -d -s review-<slug> -c <project_dir> \
@@ -406,11 +425,96 @@ def _run_heartbeat(sessions_dir: Path, slugs: list[str], interval: int,
 
 
 # --------------------------------------------------------------------------- #
+# Phase 1 — PR worktree lookup
+# --------------------------------------------------------------------------- #
+def find_pr_worktree(pr_id: str, repo_dir: str) -> str | None:
+    """Name to pass to `claude --worktree` to reach the checkout that already
+    holds PR <pr_id>'s branch, or None if none can/should be used.
+
+    Looked up by branch (via `gh pr view` + `git worktree list --porcelain`)
+    against every worktree of the repo, wherever it lives on disk — the
+    operator is trusted to know what worktrees exist on their own machine, so
+    a match is used as-is regardless of whether it sits under the
+    '.claude/worktrees/<name>' convention, was routed elsewhere by a
+    WorktreeCreate hook, or was hand-created with `git worktree add`.
+
+    The name handed to --worktree is the branch name itself, not anything
+    derived from the matched path: a `--worktree` name may be '/'-separated
+    (e.g. 'fix/some-thing'), and a directory's last path component alone would
+    silently truncate that -- '.../fix/some-thing' has basename 'some-thing',
+    which points --worktree at an unrelated, freshly-created location instead
+    of the existing one. The branch name has no such ambiguity and matches
+    both a human naming a worktree after its branch and a WorktreeCreate hook
+    that mirrors the branch path (both common in practice) -- but neither is
+    guaranteed, so a wrong guess (and the CLI erroring out on it) is still a
+    real, accepted risk for a worktree named some other way entirely.
+
+    Two cases return None on purpose, not just on failure: the branch isn't
+    checked out anywhere Claude Code knows of (gh/git error, no gh, no pr_id,
+    no matching worktree), or the match IS repo_dir itself (comparing real,
+    resolved paths so running from a subdirectory of the worktree still
+    counts) — nothing to redirect to either way. The caller's fallback for
+    every case is simply to omit --worktree, which is today's existing
+    behavior, so a lookup failure here must never abort the run.
+    """
+    pr_id = (pr_id or "").strip()
+    if not pr_id or not shutil.which("gh"):
+        return None
+
+    try:
+        head = subprocess.run(
+            ["gh", "pr", "view", pr_id, "--json", "headRefName",
+             "-q", ".headRefName"],
+            cwd=repo_dir, capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if head.returncode != 0:
+        return None
+    branch = head.stdout.strip()
+    if not branch:
+        return None
+
+    try:
+        listing = subprocess.run(
+            ["git", "-C", repo_dir, "worktree", "list", "--porcelain"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if listing.returncode != 0:
+        return None
+
+    # --porcelain emits one blank-line-separated block per worktree: a
+    # 'worktree <path>' line followed by 'HEAD <sha>' and then either
+    # 'branch <ref>', 'detached', or 'bare'.
+    entries: list[dict[str, str]] = []
+    current: dict[str, str] | None = None
+    for line in listing.stdout.splitlines():
+        if line.startswith("worktree "):
+            current = {"path": line[len("worktree "):].strip(), "branch": ""}
+            entries.append(current)
+        elif line.startswith("branch ") and current is not None:
+            ref = line[len("branch "):].strip()
+            prefix = "refs/heads/"
+            current["branch"] = ref[len(prefix):] if ref.startswith(prefix) else ref
+
+    repo_dir_real = Path(repo_dir).resolve()
+    for entry in entries:
+        if entry["branch"] != branch:
+            continue
+        if Path(entry["path"]).resolve() == repo_dir_real:
+            return None  # already the current worktree -- nothing to redirect to
+        return branch
+    return None
+
+
+# --------------------------------------------------------------------------- #
 # Phase 1 — seed
 # --------------------------------------------------------------------------- #
 def seed_one(cfg: dict, sessions_dir: Path, slug: str, sess_uuid: str,
              name: str, prompt: str, timeout: int, max_budget: float,
-             dry_run: bool) -> dict:
+             worktree_name: str | None, dry_run: bool) -> dict:
     # stream-json (not plain json) so the transcript lands, event by event, in a
     # path we control (next to the MD) and can `tail -f` for live status while
     # the seed runs. stream-json requires --verbose in --print mode.
@@ -423,6 +527,8 @@ def seed_one(cfg: dict, sessions_dir: Path, slug: str, sess_uuid: str,
         "--session-id", sess_uuid,
         "--permission-mode", cfg.get("permission_mode", "plan"),
     ]
+    if worktree_name:
+        cmd += ["--worktree", worktree_name]
     if cfg.get("model"):
         cmd += ["--model", cfg["model"]]
     if cfg.get("effort"):
@@ -569,10 +675,23 @@ def main() -> int:
     mapping_path = sessions_dir / "mapping.tsv"
     mapping = read_mapping(mapping_path)
 
+    # Seeds inherit this script's own process cwd, not necessarily the PR's
+    # worktree — so without this, a seed could silently review whatever branch
+    # happens to be checked out wherever this script runs. Only attempted for
+    # the auto-detected project dir: an explicit --project-dir is the operator
+    # overriding where sessions start, so honor it as-is instead of second-
+    # guessing it with a different worktree.
+    worktree_name = None
+    if review_type == "code-review" and args.project_dir is None:
+        worktree_name = find_pr_worktree(meta.get(META_PR_ID, ""), project_dir)
+
     print(f"MD file      : {md_file}")
     print(f"Review type  : {review_type}")
     print(f"Template     : {tpl_path}")
     print(f"Project dir  : {project_dir}")
+    if worktree_name:
+        print(f"Worktree     : --worktree {worktree_name}  (resolved location not "
+              "assumed -- may be routed by a WorktreeCreate hook)")
     print(f"Sessions dir : {sessions_dir}")
     print(f"Comments     : {len(comments)}")
     print(f"Concurrency  : {concurrency}  budget: "
@@ -675,7 +794,7 @@ def main() -> int:
                 futs = {
                     pool.submit(seed_one, cfg, sessions_dir, s["slug"], s["uuid"],
                                 s["name"], s["prompt"], timeout, max_budget,
-                                args.dry_run): s
+                                worktree_name, args.dry_run): s
                     for s in to_seed
                 }
                 for fut in as_completed(futs):
