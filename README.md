@@ -23,7 +23,9 @@ harness/
 │       │   └── SKILL.md
 │       ├── save-review-comments/
 │       │   └── SKILL.md
-│       └── spawn-review-sessions/
+│       ├── spawn-review-sessions/
+│       │   └── SKILL.md
+│       └── wait-what-ru/
 │           └── SKILL.md
 └── README.md
 ```
@@ -57,6 +59,7 @@ dev/
     ├── review-plan-findings-feedback/SKILL.md
     ├── save-review-comments/SKILL.md
     ├── spawn-review-sessions/SKILL.md
+    ├── wait-what-ru/SKILL.md
     └── test-writer/SKILL.md       # future
 ```
 
@@ -76,6 +79,7 @@ they ship with the plugin and hold code shared between skills.
 | `ak-dev` | `review-plan-findings-feedback`  | Re-review after plan-review findings were addressed; adjudicates only new problems |
 | `ak-dev` | `save-review-comments`           | Persists the surviving actionable comments of a review as tagged Markdown blocks   |
 | `ak-dev` | `spawn-review-sessions`          | Spawns one backgrounded Claude Code Remote Control session per saved review comment |
+| `ak-dev` | `wait-what-ru`                   | Asks the agent to re-explain its last message in simple Russian, context first    |
 
 ## Install a plugin from this marketplace
 

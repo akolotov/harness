@@ -1,0 +1,7 @@
+---
+interface:
+  display_name: "Wait What (RU)"
+  short_description: "Re-pitch that: simpler, with the context I'm missing"
+  default_prompt: "Use $wait-what-ru to re-explain your last message."
+policy:
+  allow_implicit_invocation: false
